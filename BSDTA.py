@@ -1,10 +1,12 @@
 #new commit ;D
 import numpy as np 
 import matplotlib.pyplot as plt
-import scipy
-from scipy import signal
+from scipy import optimize,signal
 from scipy.stats import norm
-
+import emcee
+import numdifftools as nd
+from scipy.optimize import minimize
+import corner
 
 #------------------------------ 1.Theor PSD ----------------------------------#
 def SDK(freq,f,z,S,Nm,N):    
@@ -81,36 +83,37 @@ def fdd(Acc,fs,Nc):
     return s1,PSD,f
 
 #------------------------------ 6. MacValue ---------------------------------------#  
-
 def MacVal(Mode1,Mode2):
-    ter1 =  Mode1.conj().transpose()
+    # MODE1 MODESHAPE MATRIX COLUMN WISE
+    ter1 =  Mode1.transpose()
     ter2 =  Mode2.conj()
-    num  = np.matmul(ter1, ter2)**2#np.matmul(ter1,ter2).shape
-    den1  = np.matmul( Mode1.conj().transpose(), Mode1.conj())
-    den2  = np.matmul( Mode2.conj().transpose(), Mode2.conj())
+    num  = np.matmul(ter1, ter2)#np.matmul(ter1,ter2).shape
+    num =  np.linalg.matrix_power(num, 2)
+    den1  = np.matmul( Mode1.transpose(), Mode1.conj())
+    den2  = np.matmul( Mode2.transpose(), Mode2.conj())
     den = np.matmul(den1,den2)
-    Mac = num/den
+   
+    Mac = np.linalg.lstsq(num,den,rcond=None)[0]
     return Mac
 #------------------------------ 7. ID ---------------------------------------#  
 
 def Modal_id(Yxx,freq_id,Nc,N,fo,dampo,foo,fii):
+    "INTIAL VALUES NEED TO BES SELECTE IN A SMARTER WAY"
     x = [0,0.005,-6,-20]
     phi= [0.91,0.901,0.9,0.91,0.901,0.9,0.91,0.901,0.9]
     xo = x[0:4]
     xo[0] =  freq_id[np.where(Yxx== np.max(Yxx))[0][0]]
-    def posterior(x):
-        from scipy.stats import uniform,norm
-        
+    def posterior(x):        
         post = like(Yxx,freq_id,x[0],x[1],x[2],x[3],phi,1,N,Nc)
              # -np.log(norm.pdf(x[0],fo,10**-2)) -np.log(norm.pdf(x[1],dampo,10**-4))
         return post
             
     likelyhood = lambda x:posterior(x)
     #---------------- Optimize likelyhood ----------------#
-    from scipy import optimize
+
     opt = optimize.fmin(func=likelyhood ,x0=xo,maxiter= 1000,xtol=0.000001, ftol=0.000001)
     #---------------- Uncertainty Quanty. ----------------#
-    import numdifftools as nd
+
     H = nd.Hessdiag(likelyhood)(opt)
     try:
         C =np.linalg.inv(np.diag(H))
@@ -181,79 +184,18 @@ def Stage2VSDA(PHI,M,Se):
     L = -Se**-1*ter1/ter2
     return L
 #---------------------------- 16. Optmal Values of Modeshapes  ---------------#  
-
 def Opti_Modeshape(opt,freq_id,Y,Nc):
-    from scipy.optimize import minimize
     M,PHI,s1 = ModeShapeTSBSBDA(opt,freq_id,Y,Nc)
-
     lik = lambda phi:Stage2VSDA(phi,M,opt[3])
     def const(phi):
         cosntt = np.linalg.norm(phi)-1
         return cosntt
     cons = {'type':'eq', 'fun': const}
     sol = minimize(lik,PHI, constraints=cons)
-    
-    import numdifftools as nd
-    H = nd.Hessian(lik)(sol.x)
-    
+    H = nd.Hessian(lik)(sol.x)  
     C =np.linalg.inv(H)
-    import pandas as pd 
-    import seaborn as sb
-    Ptheta = np.random.multivariate_normal(sol.x, C, size=100)
-    Ptheta2 = pd.DataFrame(Ptheta)
-    plt.figure()
-    pd.plotting.scatter_matrix(Ptheta2)
-    name = str(opt[0])
-    ext = '.png'
-    plt.savefig(name+ext)
-    return sol.x,Ptheta2
-    
-
-    
-#---------------------------- 17. txt psd and acc record ---------------------#  
-def ploting_data_file(fn,fs,fo,fi):
-    Acc = np.loadtxt(fn,delimiter = ' ')
-    
-    plt.figure()
-    plt.plot(Acc)
-    plt.title('Response')
-    plt.xlabel('Data points [k]')
-    plt.ylabel('Accelerations [mm/s]')
-    
-    Yxx,freq_id,N =  PSD_FORMAT(Acc,fs,fo,fi)
-    plt.figure()
-    plt.plot(freq_id,10*np.log10(Yxx))
-    plt.title('PSD Welch Method')
-    plt.xlabel('frequency [Hz]')
-    plt.ylabel('PSD [dB]')
-    
-    spectrogram_plt(Acc[:,12],fs)
-    
-#---------------------------- 18. SPECTROGRAM --------------------------------#  
-
-def spectrogram_plt(Acc,fs):
-    plt.figure()
-    cmap = plt.get_cmap('jet')
-    plt.specgram(Acc, Fs =fs,cmap = cmap)
-    plt.title('Spectrogram')
-    plt.ylabel('frequency [Hz]')
-    plt.xlabel('Time [s]')
-
-#---------------------------- 18. Psd--------------------------------#  
-def psd_scipy(Acc,fs):
-    f, Pxx= signal.periodogram(Acc, fs)
-
-#---------------------------  19. Frequency rangae ---------------------------#  
-def frequencie_range(f,damp,k,fs):
-    fo,fi = np.array([]),np.array([])
-    for i in range(len(f)):
-    
-        fo = np.append(fo,np.round(f[i]*(1-k*damp[i]),fs))
-        fi = np.append(fi,np.round(f[i]*(1+k*damp[i]),fs))
-    return fo,fi
+    return sol.x,C
 #---------------------------  20. Subploting  --------------------------------#  
-
-
 def suploting(opt,C):
     plt.figure()
     std = np.abs(np.diag(C))**0.5
@@ -275,53 +217,11 @@ def suploting(opt,C):
     try:
         plt.hist(h,color ='y')       
     except:
-        s = np.random.uniform(-10,10,1000)
         plt.hist(h,color ='y')   
         plt.show()
-
-#-------------------------- 21- Select Band ----------------------------------#
-    
-def selec_band(fopt,r):
-    dist = np.diff(fopt)
-    fo,fi = np.array([]),np.array([])
-    for i in range(len(fopt)):
-        if i == 0:
-            fo = np.append(fo,0.001)
-            fii = fopt[i]+dist[i]*r
-            fi = np.append(fi,fii)
-        else:
-            if i ==len(dist):
-                
-                foo = fopt[i]-dist[i-1]*r
-                fo = np.append(fo,foo)
-                fi = np.append(fi,fopt[i]+5)
-            else:
-    
-                foo = fopt[i]-dist[i-1]*r
-                fii = fopt[i]+dist[i]*r
-                fi = np.append(fi,fii)
-                fo = np.append(fo,foo)
-    return fo,fi
-
-            
-#-------------------------- 22- pymc implementation --------------------------#
-def MCMCM_lIKE(Y,freq_id,f,z,S,Se,phi,Nm,N,Nc):
-    import pymc3 as pm
-
-    def posterior(f,z,S,Se):        
-        post = -like(Y,freq_id,f,z,S,Se,phi,1,N,Nc)
-        return post
-            
-    likelyhood = lambda x:posterior(x)
-    
-    
-
-
-
-
 #------------------------------  slampler ------------------------------------#
-import emcee
-def walkers(xopt,N,Nc,Y,freq_id,Nsamples,f_pri):
+
+def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
     
     phi= [0.91,0.901,0.9,0.91,0.901,0.9,0.91,0.901,0.9]
 
@@ -336,8 +236,7 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples,f_pri):
          
            post = -np.inf # just set to negative infinity 
         return post  
-    def log_fprior(theta):
-        return -np.log(norm.pdf(theta[0],f_pri,0.05))
+
         
     
     def log_prior(theta):
@@ -345,8 +244,6 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples,f_pri):
         if 0.0 < z < 0.01 and -12 < S < -8 and -30 < Se < -15:
             return 0.0
         return -np.inf
-    
-    # breakpoint()
     f =  np.random.normal(xopt[0],xopt[0]*std ,30)
     z =   np.random.normal(abs(xopt[1]),abs(xopt[1])*std,30)
     S = np.random.normal(xopt[2], -xopt[2]*std, 30)
@@ -356,26 +253,36 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples,f_pri):
     
     def log_probability(tetha, Y,freq_id):
         lp = log_prior(tetha)
-        lpf= log_fprior(tetha)
-        prob2 = lp + log_likelihood(tetha,Y,freq_id)#+lpf
+        prob2 = lp + log_likelihood(tetha,Y,freq_id)#
         if np.isnan(prob2)== 'True':
             prob2 =  -np.inf
-        return prob2
-    
-
-    
+        return prob2    
     sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,args=(Y,freq_id))
-
     sampler.run_mcmc(pos, Nsamples, progress=True)
     samples = sampler.get_chain()
     flat_samples = sampler.get_chain(discard=int(samples.shape[0]*0.1),flat=True)
-    import corner
     labels = ["f", "z", "log10(S)", "log10(Se)"]
     fig = corner.corner(flat_samples, labels=labels);
     fig.savefig(f'{np.mean(flat_samples[:,0])}.png')
     return flat_samples
     
+#------ Snipets ------#   
+#import pandas as pd 
+#import seaborn as sb
+#Ptheta = np.random.multivariate_normal(sol.x, C, size=100)
+#Ptheta2 = pd.DataFrame(Ptheta)
+#plt.figure()
+#pd.plotting.scatter_matrix(Ptheta2)
+#name = str(opt[0])
+#ext = '.png'
+#plt.savefig(name+ext)
+#        
+#    
     
+# To do
+# improve the import function like scipy optimize
+# INitial values of modal id need to be selected in a smart way
+# SDK and theor are the same thing it can be optimize 
+#modeshapes needs to eb adjust with NC
+#fix modal determinsitic - Noise distribuiton
 
-        
-    

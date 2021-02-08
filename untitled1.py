@@ -22,29 +22,22 @@ print('******')
   
 start = timer()
 
-# for i in range(clusters.shape[1]-1):
-#     fo=clusters[0,i]-ranges[0,i]
-#     fi=clusters[0,i]+ranges[0,i]
-#     Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
-#     print(Yxx.shape)
-#     # opt,C = BS.Modal_id(Yxx,freq_id,Nc,N,clusters[0,i],0.01,fo,fi)
-#     opt = [clusters[0,i],0.01,-9,-20]
-#     samples=BS.walkers(opt,N,Nc,Yxx,freq_id,70,clusters[0,i])
+#for i in range(clusters.shape[1]-1): 
+#    fo=clusters[0,i]-ranges[0,i]
+#    fi=clusters[0,i]+ranges[0,i]
+#    Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#    print(Yxx.shape)
+#    opt,C = BS.Modal_id(Yxx,freq_id,Nc,N,clusters[0,i],0.01,fo,fi)
+#    opt = [clusters[0,i],0.01,-9,-20]
+#    samples=BS.walkers(opt,N,Nc,Yxx,freq_id,70,clusters[0,i])
 
 fo=24
 fi=26
 Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
 print(Yxx.shape)
-# opt,C = BS.Modal_id(Yxx,freq_id,Nc,N,clusters[0,i],0.01,fo,fi)
+opt,C = BS.Modal_id(Yxx,freq_id,Nc,N,clusters[0,1],0.01,fo,fi)
 opt = [24.5,0.001,-9,-20]
-samples=BS.walkers(opt,N,Nc,Yxx,freq_id,500,24)
-
-"""
-modeshapes needs to eb adjust with NC
-fix modal determinsitic - Noise distribuiton
-""
-
-    
+samples=BS.walkers(opt,N,Nc,Yxx,freq_id,500)
 
 end = timer()
 print(start-end)
