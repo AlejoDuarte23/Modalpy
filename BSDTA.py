@@ -285,4 +285,5 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
 # SDK and theor are the same thing it can be optimize 
 #modeshapes needs to eb adjust with NC
 #fix modal determinsitic - Noise distribuiton
+#Add progress bar to SSIs
 

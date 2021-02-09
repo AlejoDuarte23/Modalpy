@@ -2,7 +2,7 @@ import SSI.SSI_Backend as SSI
 import matplotlib.pyplot as plt 
 import numpy as np 
 from scipy import signal
-
+from tqdm import tqdm
 
 def SSI_COV_AD(Acc,fs,Ts,Nc,Nmax,Nmin):
 # --------------------------- 3. NexT ----------------------------------------#
