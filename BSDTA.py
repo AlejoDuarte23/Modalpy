@@ -7,7 +7,7 @@ import emcee
 import numdifftools as nd
 from scipy.optimize import minimize
 import corner
-
+from sklearn.cluster import KMeans
 #------------------------------ 1.Theor PSD ----------------------------------#
 def SDK(freq,f,z,S,Nm,N):    
     bk = f/freq
@@ -95,34 +95,7 @@ def MacVal(Mode1,Mode2):
    
     Mac = np.linalg.lstsq(num,den,rcond=None)[0]
     return Mac
-#------------------------------ 7. ID ---------------------------------------#  
 
-def Modal_id(Yxx,freq_id,Nc,N,fo,dampo,foo,fii):
-    "INTIAL VALUES NEED TO BES SELECTE IN A SMARTER WAY"
-    x = [0,0.005,-6,-20]
-    phi= [0.91,0.901,0.9,0.91,0.901,0.9,0.91,0.901,0.9]
-    xo = x[0:4]
-    xo[0] =  freq_id[np.where(Yxx== np.max(Yxx))[0][0]]
-    def posterior(x):        
-        post = like(Yxx,freq_id,x[0],x[1],x[2],x[3],phi,1,N,Nc)
-             # -np.log(norm.pdf(x[0],fo,10**-2)) -np.log(norm.pdf(x[1],dampo,10**-4))
-        return post
-            
-    likelyhood = lambda x:posterior(x)
-    #---------------- Optimize likelyhood ----------------#
-
-    opt = optimize.fmin(func=likelyhood ,x0=xo,maxiter= 1000,xtol=0.000001, ftol=0.000001)
-    #---------------- Uncertainty Quanty. ----------------#
-
-    H = nd.Hessdiag(likelyhood)(opt)
-    try:
-        C =np.linalg.inv(np.diag(H))
-     
-        # suploting(opt,C)
-    except:
-        C = []
-        print('NOT STABLE')
-    return opt,C
 
 #---------------------------- 13. Ploting Results ----------------------------#  
 def ploting_results(freq_id,Yxx,opt,std,phi):
@@ -225,7 +198,7 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
     
     phi= [0.91,0.901,0.9,0.91,0.901,0.9,0.91,0.901,0.9]
 
-    std = 0.01
+    std = 0.1
     
     def log_likelihood(tetha,Y,freq_id):   
         f,z,S,Se = tetha 
@@ -241,13 +214,13 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
     
     def log_prior(theta):
         f,z,S,Se = theta 
-        if 0.0 < z < 0.01 and -12 < S < -8 and -30 < Se < -15:
+        if 0.0 < z < 0.01 and -12 < S < -1 and -30 < Se < -15:
             return 0.0
         return -np.inf
     f =  np.random.normal(xopt[0],xopt[0]*std ,30)
-    z =   np.random.normal(abs(xopt[1]),abs(xopt[1])*std,30)
-    S = np.random.normal(xopt[2], -xopt[2]*std, 30)
-    Se = np.random.normal(xopt[3], -xopt[3]*std,30)
+    z =   np.random.normal(abs(xopt[1]),abs(xopt[1])*0.01,30)
+    S = np.random.normal(xopt[2], 5, 30)
+    Se = np.random.normal(xopt[3], 5,30)
     pos= np.stack((f, z,S,Se), axis=-1)
     nwalkers, ndim = pos.shape
     
@@ -260,11 +233,104 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
     sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,args=(Y,freq_id))
     sampler.run_mcmc(pos, Nsamples, progress=True)
     samples = sampler.get_chain()
-    flat_samples = sampler.get_chain(discard=int(samples.shape[0]*0.1),flat=True)
+    flat_samples = sampler.get_chain(discard=int(samples.shape[0]*0.7),flat=True)
     labels = ["f", "z", "log10(S)", "log10(Se)"]
     fig = corner.corner(flat_samples, labels=labels);
     fig.savefig(f'{np.mean(flat_samples[:,0])}.png')
     return flat_samples
+
+def Optimal_Cluster(fopt,PL = False):
+    Sum_of_squared_distances = []
+    K = range(1,15)
+    for i in K:
+        kmeans = KMeans(n_clusters=i)
+        kmeans.fit(fopt.reshape(-1,1))
+        Sum_of_squared_distances.append(kmeans.inertia_)
+    if PL == True:
+        plt.plot(K, Sum_of_squared_distances, 'bx-')
+        plt.xlabel('k')
+        plt.ylabel('Square Distances')
+        plt.title('Optimal Cluster Calculation')
+        plt.show()
+    Optc = np.where(np.abs(np.diff(Sum_of_squared_distances))<1)[0][0]
+    kmeans = KMeans(n_clusters=Optc)
+    kmeans.fit(fopt.reshape(-1,1))
+    clusters = np.sort(kmeans.cluster_centers_,axis = 0).T
+    ranges = np.abs(np.diff(clusters))
+    return Optc,clusters,ranges
+
+#------------------------------ 7. ID ---------------------------------------#  
+
+def Modal_id(Yxx,freq_id,Nc,N,theta,foo,fii):
+
+    xo = theta
+    "INTIAL VALUES NEED TO BES SELECTE IN A SMARTER WAY"
+   
+    phi= [0.91,0.901,0.9,0.91,0.901,0.9,0.91,0.901,0.9]
+
+    def posterior(x):        
+        post = like(Yxx,freq_id,x[0],x[1],x[2],x[3],phi,1,N,Nc)
+             # -np.log(norm.pdf(x[0],fo,10**-2)) -np.log(norm.pdf(x[1],dampo,10**-4))
+        return post
+            
+    likelyhood = lambda x:posterior(x)
+    #---------------- Optimize likelyhood ----------------#
+
+    opt = optimize.fmin(func=likelyhood ,x0=xo,maxiter= 1000,xtol=0.000001, ftol=0.000001)
+    #---------------- Uncertainty Quanty. ----------------#
+
+    H = nd.Hessdiag(likelyhood)(opt)
+    # breakpoint()
+    try:
+        C =np.linalg.inv(np.diag(H)[:-1,:-1])
+     
+        # suploting(opt,C)
+    except:
+        C = np.zeros((3,3))
+        print('NOT STABLE')
+    return opt,C
+
+
+def Det_Unc_OMA(fopt,dampopt,Phi,Acc,fs,Nc,ranges,clusters):
+    F_id = np.zeros((fopt.shape[0],4))
+    F_uc = np.zeros((fopt.shape[0],3))
+    c = 0
+    for i in range (clusters.shape[1]):
+        if i == 0:
+            fo =clusters[0,i]-clusters[0,i]/2
+            fi = clusters[0,i]+ranges[0,i]/2
+        if i <clusters.shape[1]-1:
+            fo =clusters[0,i]-ranges[0,i-1]/2
+            fi = clusters[0,i]+ranges[0,i]/2  
+        else:
+            fo =clusters[0,i]-ranges[0,i-1]/2
+            fi = clusters[0,i]+ranges[0,i-1]/2           
+                
+
+            
+        pos = np.where((fopt>fo) & (fopt<fi))
+        _F = fopt[pos]
+        _Z = dampopt[pos]
+        
+        F = _F[np.argsort(_F)]
+        Z = _Z[np.argsort(_F)]
+        Yxx,freq_id,N = PSD_FORMAT(Acc,fs,fo,fi)
+        for j in range(len(F)):
+            
+            tetha = [F[j],Z[j],-6,-9]
+            opt,C = Modal_id(Yxx,freq_id,Nc,N,tetha,fo,fi)
+            p_opt,h_C = Opti_Modeshape(opt,freq_id,Yxx,Nc)
+            F_id[c,:]= opt
+            F_uc[c,:]=np.diag(C)
+            print(c,'f:',opt[0],'z:',opt[1])
+            print(c,'f:',F[j],'z:',Z[j])
+            c = c +1
+           
+            
+    return F_id,F_uc
+
+
+        
     
 #------ Snipets ------#   
 #import pandas as pd 

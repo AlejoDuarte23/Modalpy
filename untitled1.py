@@ -9,30 +9,30 @@ from tqdm import tqdm
 fs = 95
 Acc =  np.loadtxt('Data/Sp_Acc_11_02_12_7_18.txt',delimiter = ',')
 Nd,Nc = Acc.shape
-
 #---------------------- 1.  Load data ----------------------------------------#
 start = timer()
 fn,zeta ,phi,fopt,dampopt = SSI.SSI_COV_AD(Acc,fs,10,Nc,100,80)
+Optc,clusters,ranges = BS.Optimal_Cluster(fopt)
+BS.Det_Unc_OMA(fopt,dampopt,phi,Acc,fs,Nc,ranges,clusters)
+               
+               
+               
+               
+# i = 0
+# fo=clusters[0,i]-ranges[0,i]/2
+# fi=clusters[0,i]+ranges[0,i]/2
+# Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+# plt.plot(freq_id,10*np.log10(Yxx))
 
-#kmeans = KMeans(n_clusters=10)
-#kmeans.fit(fopt.reshape(-1,1))
-#clusters = np.sort(kmeans.cluster_centers_).T
-#ranges = np.abs(np.diff(clusters))
-#print(clusters)
-end = timer()
-print(start-end) 
-print('******')
-  
-#start = timer()
-
-#for i in range(clusters.shape[1]-1): 
-#    fo=clusters[0,i]-ranges[0,i]
-#    fi=clusters[0,i]+ranges[0,i]
-#    Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
-#    print(Yxx.shape)
-#    opt,C = BS.Modal_id(Yxx,freq_id,Nc,N,clusters[0,i],0.01,fo,fi)
-#    opt = [clusters[0,i],0.01,-9,-20]
-#    samples=BS.walkers(opt,N,Nc,Yxx,freq_id,70,clusters[0,i])
+ 
+ 
+# for i in range(clusters.shape[1]-7): 
+#     fo=clusters[0,i]-ranges[0,i]/2
+#     fi=clusters[0,i]+ranges[0,i]/2
+#     Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#     # opt,C = BS.Modal_id(Yxx,freq_id,Nc,N,clusters[0,i],0.01,fo,fi)
+#     opt = [clusters[0,i],0.01,-9,-10]
+#     samples=BS.walkers(opt,N,Nc,Yxx,freq_id,3000)
 #
 #fo=24
 #fi=26
