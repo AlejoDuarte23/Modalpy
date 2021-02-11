@@ -38,10 +38,8 @@ def theor(freq,f,z,S,Se,Nm,N):
 
     return S*Dk+Se
 #------------------------------ 4. Get Spectral range ------------------------#  
-def PSD_FORMAT(Acc,fs,fo,fi):
- 
+def PSD_FORMAT(Acc,fs,fo,fi,PL = False):
     try:
-        print('Entro')
         freq,Yo = signal.welch(Acc[:,0],fs,nperseg=int(len(Acc[:,0])/4)+1)
         Y = np.zeros((len(Yo),len(Acc[0,:])))
         for i in range(len(Y[0,:])):
@@ -49,12 +47,25 @@ def PSD_FORMAT(Acc,fs,fo,fi):
             freq,Y[:,i] = signal.welch(Acc[:,i],fs,nperseg=int(len(Acc[:,0])/4)+1)
     except:
         freq,Y = signal.periodogram(Acc,fs)
+        
     idd = (np.where((freq>= fo) & (freq <= fi)))
     freq_id= freq[idd]
     Yx= Y[idd]
     Yxx = Yx**0.5
     N = len(freq_id)
     
+    if PL == True:
+        
+            
+        plt.figure()
+        plt.plot(freq_id,10*np.log10(Yx))
+        plt.title('PSD')
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('PSD [db]')
+        plt.legend(["Channel{}".format(x) for x in range(Yx.shape[1])])
+        plt.xlim([fo,fi])
+        plt.show()
+        
     return Yxx,freq_id,N
     
 
@@ -194,17 +205,16 @@ def suploting(opt,C):
         plt.show()
 #------------------------------  slampler ------------------------------------#
 
-def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
+def walkers(xopt,phi,fo,fi,N,Nc,Y,freq_id,Nsamples):
     
-    phi= [0.91,0.901,0.9,0.91,0.901,0.9,0.91,0.901,0.9]
 
-    std = 0.1
+    
     
     def log_likelihood(tetha,Y,freq_id):   
         f,z,S,Se = tetha 
              
         try:
-           post = -like(Y,freq_id,f,z,S,Se,phi[:3],1,N,Nc)
+           post = -like(Y,freq_id,f,z,S,Se,phi,1,N,Nc)
         except ValueError: # NaN value case
          
            post = -np.inf # just set to negative infinity 
@@ -214,13 +224,14 @@ def walkers(xopt,N,Nc,Y,freq_id,Nsamples):
     
     def log_prior(theta):
         f,z,S,Se = theta 
-        if 0.0 < z < 0.01 and -12 < S < -1 and -30 < Se < -15:
+        if fo-0.1< f<fi and 0.0 < z < 0.1 and -20 < S < 1 and -20 < Se < 1:
             return 0.0
         return -np.inf
-    f =  np.random.normal(xopt[0],xopt[0]*std ,30)
-    z =   np.random.normal(abs(xopt[1]),abs(xopt[1])*0.01,30)
-    S = np.random.normal(xopt[2], 5, 30)
-    Se = np.random.normal(xopt[3], 5,30)
+    
+    f =  np.random.uniform(fo,fo+(fi-fo),size =40)
+    z =  np.random.uniform(10**-6,0.05,40) 
+    S = np.random.normal(xopt[2], 1, size =40)
+    Se = np.random.uniform(-12,-2,size =40)
     pos= np.stack((f, z,S,Se), axis=-1)
     nwalkers, ndim = pos.shape
     

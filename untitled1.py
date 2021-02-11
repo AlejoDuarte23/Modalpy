@@ -7,21 +7,85 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 #--------------- Loading Data ------------------------------------------------#
 fs = 95
+Ncl = 5
+Lk_dist = 0.2
 Acc =  np.loadtxt('Data/Sp_Acc_11_02_12_7_18.txt',delimiter = ',')
 Nd,Nc = Acc.shape
 #---------------------- 1.  Load data ----------------------------------------#
-start = timer()
-fn,zeta ,phi,fopt,dampopt = SSI.SSI_COV_AD(Acc,fs,10,Nc,100,80)
-Optc,clusters,ranges = BS.Optimal_Cluster(fopt)
-BS.Det_Unc_OMA(fopt,dampopt,phi,Acc,fs,Nc,ranges,clusters)
-               
-               
-               
+
+
+
+
+
+cases = 2
+if cases == 0:
+    fn,zeta ,phi,fopt,dampopt = SSI.SSI_COV_AD(Acc,fs,6,Nc,40,35,Ncl,Lk_dist)
+ 
+if cases == 1:
+    Optc,clusters,ranges = BS.Optimal_Cluster(fopt)
+    BS.Det_Unc_OMA(fopt,dampopt,phi,Acc,fs,Nc,ranges,clusters)
+
+if cases == 2:
+    #Inital:
+    fo = 10
+    fi = 10.8
+    phi= [0.1,0.1,0.1,0.9,0.9,0.9,0.1,0.1,0.1]
+
+    Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+    tetha = [10.5,0.001,-8,-5]
+    Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,3000)
+
+
+##Inital:
+#fo = 10
+#fi = 10.8
+#phi= [0.1,0.1,0.1,0.9,0.9,0.9,0.1,0.1,0.1]
+#
+#Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#tetha = [10.5,0.001,-8,-5]
+#Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,3000)
+#    
+    
+##Inital:
+#fo = 5.3
+#fi = 6
+#phi= [0.9,0.9,0.9,0.1,0.1,0.1,0.1,0.1,0.1]
+#
+#Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#tetha = [6.6,0.001,-6,-6]
+#Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,1000)
+    
+#fo = 3.6
+#fi = 3.78
+#phi= [0.9,0.9,0.9,0.1,0.1,0.1,0.1,0.1,0.1]
+#
+#Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#tetha = [3.6,0.0001,-6,-2]
+#Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,1000)        
+
+#fo = 17
+#fi = 19 
+#phi= [0.01,0.01,0.01,0.1,0.1,0.1,0.9,0.1,0.9]
+#
+#Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#tetha = [17.5,0.001,-6,-5]
+#Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,2000)
+#    
+#    
+#
+#fo = 8.2
+#fi = 9
+#phi= [0,0,0,0.2,0.2,0.2,0.9,0.9,0.9]
+#
+#Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+#tetha = [8.73,0.01,-6,-5]
+#Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,1500)
+
                
 # i = 0
 # fo=clusters[0,i]-ranges[0,i]/2
 # fi=clusters[0,i]+ranges[0,i]/2
-# Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+# Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)y
 # plt.plot(freq_id,10*np.log10(Yxx))
 
  

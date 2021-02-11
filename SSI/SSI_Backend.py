@@ -44,7 +44,7 @@ def NexT(acc,fs,Ts,Nc):
 def blockToeplitz(h):   
     N1 = round(h.shape[2]/2)-1
     M = h.shape[1]
-    T1= np.zeros(((N1)*M,(N1)*M))
+    T1= np.zeros(((N1)*M,(N1)*M),dtype = 'complex_')
     for oo in range(N1):
         for ll in range(N1):
             T1[(oo)*M:(oo+1)*M,(ll)*M:(ll+1)*M] = h[:,:,N1-1+oo-ll+1] 
@@ -197,7 +197,7 @@ def getStablePoles(fn,zeta,phi,MAC,stablity_status):
             
     return fnS,zetaS,phiS,MACS 
 # --------------------------------- 11.Cluster  ------------------------------#
-def ClusterFun(fn0,zeta0,phi0): 
+def ClusterFun(fn0,zeta0,phi0,Ncl,Lk_dist): 
     Nsamples = phi0.shape[1]
     pos = np.zeros((Nsamples,Nsamples))
     for i in range(Nsamples):
@@ -206,7 +206,7 @@ def ClusterFun(fn0,zeta0,phi0):
              pos[i,j] = np.abs((fn0[i]-fn0[j])/(fn0[j]))
     
     Z = linkage(pos,'single','euclidean')
-    myClus = fcluster(Z,0.1,criterion = 'distance')
+    myClus = fcluster(Z,Lk_dist,criterion = 'distance')
 
     Ncluster = max(myClus)
     ss= 0
@@ -215,7 +215,7 @@ def ClusterFun(fn0,zeta0,phi0):
     phi = {}
 
     for rr in range(Ncluster):
-        if len(myClus[np.where(myClus == rr)])>5:
+        if len(myClus[np.where(myClus == rr)])>Ncl:
          
             dummyZeta = zeta0[np.where(myClus==rr)]
             dummyFn = fn0[np.where(myClus==rr)]

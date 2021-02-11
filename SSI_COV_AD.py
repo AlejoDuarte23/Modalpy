@@ -3,39 +3,31 @@ import matplotlib.pyplot as plt
 import numpy as np 
 from scipy import signal
 from tqdm import tqdm
+from timeit import default_timer as timer
 
-def SSI_COV_AD(Acc,fs,Ts,Nc,Nmax,Nmin):
-# --------------------------- 3. NexT ----------------------------------------#
-    #breakpoint()
+def SSI_COV_AD(Acc,fs,Ts,Nc,Nmax,Nmin,Ncl,Lk_dist):
+# --------------------------- 1. NexT ----------------------------------------#
+    print('Doing Natural excitation')
+    Star = timer()
     IRF = SSI.NexT(Acc,fs,Ts,Nc)
-
+    print('Done Natural excitation')
+    End = timer()
+    print('Elapse time [s] :',End-Star)
+# --------------------------- 2. Toeplitz -------------------------------------#
+    
+    print('Doing SVD BlokcToeplitz Matriz')    
+    Star = timer()
     [U,S,V,T] = SSI.blockToeplitz(IRF)
+    print('Done SVD BlokcToeplitz Matriz')    
+    End = timer()
+    print('Elapse time [s] :',End-Star)
 
-    # plt.figure()
-
-        
-    # fig, ax1 = plt.subplots()
-    # color = 'blue'
-    # for i in range(Nc):
-    #     # freqss,pxx = signal.welch(Acc[:,i],fs,nfft = int(len(Acc[:,i])/2)+1,nperseg=int(len(Acc[:,i])/2))
-    #     ax1.set_xlabel('frequency [Hz]')
-    #     ax1.set_ylabel('Power Spectral Density')
-    
-    #     # ax1.plot(freqss, 10*np.log(pxx))
-    #     plt.xlim([0,int(fs/2)+1])
-            
-    #     ax1.tick_params(axis='y', labelcolor=color)
-    # ax2 = ax1.twinx() 
-    # color = 'red'
-    # ax2.set_ylabel('order', color=color) 
-    
-    
-    
     kk=0
-    
-    # print('******* Identified poles **********')
+    print('Doing Stability Check')   
+    Star = timer()
     fn2,zeta2,phi2,MAC,stablity_status = {},{},{},{},{}
-    for i in range(Nmax,Nmin,-1):
+    
+    for i in range(Nmax,Nmin-1,-1):
         if kk == 0:
             fn0,zeta0,phi0 = SSI.modalID(U,S,i,Nc,fs)
     
@@ -59,23 +51,30 @@ def SSI_COV_AD(Acc,fs,Ts,Nc,Nmax,Nmin):
             phi0=phi1  
             
         kk = kk +1
+    End = timer()
+    print('Done Stability Check')    
+    print('Elapse time [s] :',End-Star)
     
     # --------------------------- 9. flip dictionary -----------------------------#
     fn2 = SSI.flip_dic(fn2)
     zeta2 = SSI.flip_dic(zeta2)
     phi2 = SSI.flip_dic(phi2)
   
-    
+    print('Doing Filter stable Poles')   
+    Star = timer()
     fnS,zetaS,phiS,MACS = SSI.getStablePoles(fn2,zeta2,phi2,MAC,stablity_status)
+    End = timer()
+    print('Done Filter stable Poles')    
+    print('Elapse time [s] :',End-Star)
 
+    print('Doing Cluster Analysis')   
+    Star = timer()    
+    fn,zeta,phi = SSI.ClusterFun(fnS,zetaS,phiS,Ncl,Lk_dist)
+    End = timer()
+    print('Done Cluster Analysis')    
+    print('Elapse time [s] :',End-Star)
     
-    fn,zeta,phi = SSI.ClusterFun(fnS,zetaS,phiS)
-    
-    # print('********************')
-    # print('******** cluster :D *********')
-    # print(fn)
-    # print('********  cluster :D  ********')
-    # print(zeta)
+
     fopt,dampopt = SSI.Cluster_Resuls(fn,zeta)
-    # phi_shape = SSI.shape_modeshape(phi,fn)
+
     return fn,zeta ,phi,fopt,dampopt
