@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 from sklearn.cluster import KMeans
 from tqdm import tqdm
+import MDOF_LSQ as LSQ
 #--------------- Loading Data ------------------------------------------------#
 fs = 95
 Ncl = 5
@@ -17,7 +18,7 @@ Nd,Nc = Acc.shape
 
 
 
-cases = 2
+cases = 3
 if cases == 0:
     fn,zeta ,phi,fopt,dampopt = SSI.SSI_COV_AD(Acc,fs,6,Nc,40,35,Ncl,Lk_dist)
  
@@ -34,6 +35,17 @@ if cases == 2:
     Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
     tetha = [10.5,0.001,-8,-5]
     Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,3000)
+if cases == 3:
+    Nm = 1
+    fo = 5.4
+    fi = 5.8
+    f = [5.6]
+    z = [0.001]
+    S = [-7]
+    Se = [-6]
+    xo = [*f,*z,*S,*Se]
+    xopt = LSQ.MDOF_LSQ(xo,Acc,fs,fo,fi,Nm)
+        
 
 
 ##Inital:
