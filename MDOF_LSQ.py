@@ -83,7 +83,7 @@ def MDOF_LSQ(xo,ACC,fs,fo,fi,Nm):
     likelyhood = lambda xo,freq,si: likelihood(xo,freq,si,Nm,N)
     opt = least_squares(likelyhood ,xo,loss='cauchy',f_scale=0.1,args=(freq_id, s1_id))
     plot_psd(opt.x,Nm,N,freq_id,s1_id)
-    return opt
+    return opt,psd
 
 def nextpow2(Acc):
     N = Acc.shape[0]

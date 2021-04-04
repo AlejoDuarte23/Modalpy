@@ -10,15 +10,17 @@ import MDOF_LSQ as LSQ
 fs = 95
 Ncl = 5
 Lk_dist = 0.2
-Acc =  np.loadtxt('Data/Sp_Acc_11_02_12_7_18.txt',delimiter = ',')
+Acco =  np.loadtxt('Data/Sp_Acc_11_02_12_7_18.txt',delimiter = ',')
+# Acc = Acco[:,3:6]
+Acc = Acco[:,-6:]
+
 Nd,Nc = Acc.shape
 #---------------------- 1.  Load data ----------------------------------------#
 
+# Yxx,freq_id,N =BS.PSD_FORMAT(Acc,fs,1,20,PL=True)
 
 
-
-
-cases = 3
+cases = 6
 if cases == 0:
     fn,zeta ,phi,fopt,dampopt = SSI.SSI_COV_AD(Acc,fs,6,Nc,40,35,Ncl,Lk_dist)
  
@@ -36,16 +38,39 @@ if cases == 2:
     tetha = [10.5,0.001,-8,-5]
     Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,3000)
 if cases == 3:
-    Nm = 1
-    fo = 5.4
+    Nm = 3
+    fo = 3.5
     fi = 5.8
-    f = [5.6]
-    z = [0.001]
-    S = [-7]
-    Se = [-6]
+    f = [3.88,4.8,5.6]
+    z = [0.001,0.001,0.001]
+    S = [-7,-8,-8]
+    Se = [-10]
     xo = [*f,*z,*S,*Se]
-    xopt = LSQ.MDOF_LSQ(xo,Acc,fs,fo,fi,Nm)
-        
+    xopt,psd = LSQ.MDOF_LSQ(xo,Acc,fs,fo,fi,Nm)
+
+if cases == 5:
+    #Inital:
+    fo = 3.6
+    fi = 4.3
+    phi= [1,1,1]
+
+    Yxx,freq_id,N = BS.PSD_FORMAT(Acc,fs,fo,fi)
+    tetha = [3.88,0.004,-5,-6]
+    Samples = BS.walkers(tetha,phi,fo,fi,N,Nc,Yxx,freq_id,2000)
+
+if cases == 6:
+    
+    fo = 17
+    fi = 18
+    
+    f=[17.11,17.25,17.67,17.89,18.11,18.2,18.3]
+    # f = [17.1,17.24,17.57,17.67,17.8,17.9,18.1]
+    z = [0.0001,0.0001,0.0001,0.0001,0.01,0.01,0.01]
+    S = [-6,-6,-6,-6,-5,-5,-5]
+    Se = [-15]
+    xo = [*f,*z,*S,*Se]
+    Nm = len(f)
+    xopt,psd = LSQ.MDOF_LSQ(xo,Acc,fs,fo,fi,Nm)
 
 
 ##Inital:
