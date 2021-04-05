@@ -17,7 +17,7 @@ def H(freq,f,z,S,Se,Nm,N):
                 bkj = f[j]/freq
                 ter1 = 1/((1-bki)+2j*z[i]*bki)
                 ter2 = 1/((1-bkj)+2j*z[j]*bkj)
-                H[i,j,:] = (10**S[i,j])*(ter1)*(ter2)+10**Se
+                H[i,j,:] = (10.**S[i,j])*(ter1)*(ter2)+10.**Se
     return H
 #--------------------------- 1. Likely ---------------------------------------#
 def likelihood(x,freq,ymed,Nm,N):
@@ -90,4 +90,40 @@ def nextpow2(Acc):
     _ex = np.round(np.log2(N),0)
     Nfft = 2**(_ex+1)
     return int(Nfft)
+
+def CPSD(Acc,fs,Nc,fo,fi):
+    # Acc: Acceleration Matriz NcxN
+    # fs:  Sampling Frequency
+    # Nc:  Number of channels
+    AN = nextpow2(Acc)
+    # Memory alocation for the matrix
+    PSD = np.zeros((Nc,Nc,int(AN/2)+1),dtype=np.complex_)
+    freq= np.zeros((Nc,Nc,int(AN/2)+1),dtype=np.complex_)
+
+    for i in range(Nc):
+        for j in range(Nc):
+            f, Pxy = signal.csd(Acc[:,i], Acc[:,j], fs, nfft=AN,nperseg=2**11,noverlap = None,window='hamming')
+            freq[i,j]= f
+            PSD[i,j]= Pxy
+    TSx = np.trace(PSD)/len(f)      
+    idd = (np.where((f>= fo) & (f <= fi)))
+    freq_id= f[idd]
+    TSxx= np.abs(TSx[idd])
+    N = len(freq_id)
     
+    return freq_id,TSxx,N,len(f)
+
+def Model(x,freq,Nm,N,Fc):
+    # breakpoint()
+    f = x[:Nm]
+    z = x[ Nm:2*Nm]
+    S= np.diag(x[ 2*Nm:3*Nm])
+    Se=x[-1]
+    modelo = np.array([])
+    H1 = H(freq,f,z,S,Se,Nm,N)
+    for i in range(len(freq)):
+     
+        ESY = H1[:,:,i]+10**-40
+        modelo = np.abs(np.append(modelo,np.trace(ESY)/Fc))
+    return modelo
+

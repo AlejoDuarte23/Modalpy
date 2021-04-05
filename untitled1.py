@@ -12,15 +12,14 @@ Ncl = 5
 Lk_dist = 0.2
 Acco =  np.loadtxt('Data/Sp_Acc_11_02_12_7_18.txt',delimiter = ',')
 # Acc = Acco[:,3:6]
-Acc = Acco[:,-6:]
-
+Acc = Acco[:,:3]
 Nd,Nc = Acc.shape
 #---------------------- 1.  Load data ----------------------------------------#
 
-# Yxx,freq_id,N =BS.PSD_FORMAT(Acc,fs,1,20,PL=True)
+Yxx,freq_id,N =BS.PSD_FORMAT(Acc,fs,1,20,PL=True)
+plt.close('all')
 
-
-cases = 6
+cases = 7
 if cases == 0:
     fn,zeta ,phi,fopt,dampopt = SSI.SSI_COV_AD(Acc,fs,6,Nc,40,35,Ncl,Lk_dist)
  
@@ -71,7 +70,17 @@ if cases == 6:
     xo = [*f,*z,*S,*Se]
     Nm = len(f)
     xopt,psd = LSQ.MDOF_LSQ(xo,Acc,fs,fo,fi,Nm)
-
+    
+if cases == 7:
+    fo = 3.4
+    fi = 4
+    f=[3.72,3.89]
+    Nm = 2
+    z = [0.001,0.001]
+    S = [-7,-8]
+    Se = [-10]
+    xo = [*f,*z,*S,*Se]
+    xopt,psd = LSQ.MDOF_LSQ(xo,Acc,fs,fo,fi,Nm)
 
 ##Inital:
 #fo = 10
